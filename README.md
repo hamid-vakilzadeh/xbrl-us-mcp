@@ -1,83 +1,46 @@
 # XBRL-US MCP Server
 
-A Model Context Protocol (MCP) server that provides secure access to XBRL-US financial data and SEC filings. Built with FastMCP and designed for deployment on Smithery.
+A Model Context Protocol (MCP) server that provides secure access to XBRL-US financial data with session-based authentication and state persistence.
 
 ## Features
 
-- **Secure Authentication**: Uses Smithery's configuration system to securely handle XBRL-US credentials
-- **Company Search**: Search for companies by name or ticker symbol
-- **Financial Facts**: Retrieve detailed financial facts with filtering by concept and year
-- **XBRL Concepts**: Search and explore XBRL taxonomy concepts
-- **SEC Filings**: Access company SEC filings with filtering options
-- **Resource Access**: Provides XBRL taxonomy information as resources
+- **Session-Based Authentication**: Efficient session management with automatic token reuse
+- **State Persistence**: XBRL instances persist across multiple tool calls within the same session
+- **Company Search**: Search for companies by fiscal year and retrieve financial facts
+- **Secure Credentials**: SHA256-hashed credential validation and secure storage
 
 ## Tools Available
 
-### 1. Search Companies
+### Search Companies
 
-Search for companies by name or ticker symbol.
+Search for companies by fiscal year and retrieve financial facts.
 
-- **Parameters**: `query` (string), `limit` (optional, default: 10)
-- **Returns**: Formatted list of companies with CIK and ticker information
-
-### 2. Get Company Financial Facts
-
-Retrieve financial facts for a specific company.
-
-- **Parameters**: `cik` (string), `concept` (optional), `year` (optional), `limit` (optional, default: 50)
-- **Returns**: Detailed financial facts data
-
-### 3. Search XBRL Concepts
-
-Search for XBRL taxonomy concepts.
-
-- **Parameters**: `query` (string), `limit` (optional, default: 20)
-- **Returns**: List of matching XBRL concepts with descriptions
-
-### 4. Get Company Filings
-
-Retrieve SEC filings for a specific company.
-
-- **Parameters**: `cik` (string), `form_type` (optional), `year` (optional), `limit` (optional, default: 10)
-- **Returns**: List of SEC filings with details
-
-## Resources Available
-
-### US-GAAP Taxonomy Information
-
-- **URI**: `xbrl://taxonomies/us-gaap`
-- **Description**: Provides information about common US-GAAP taxonomy concepts
+- **Parameters**:
+  - `year` (integer): Fiscal year to search for
+  - `limit` (optional, default: 10): Maximum number of results to return
+- **Returns**: List of financial facts for companies in the specified year
 
 ## Authentication
 
-This server requires XBRL-US API credentials:
+This server requires XBRL-US API credentials provided via URL parameters:
 
 - **Username**: Your XBRL-US account username
 - **Password**: Your XBRL-US account password
 - **Client ID**: Your XBRL-US API client ID
 - **Client Secret**: Your XBRL-US API client secret
 
-### Smithery Deployment
+### Configuration Format
 
-When deployed on Smithery, users provide credentials through the secure configuration interface:
-
-```yaml
-# Configuration schema (handled automatically by Smithery)
-username: "your-xbrl-username"
-password: "your-xbrl-password"
-client_id: "your-client-id"
-client_secret: "your-client-secret"
-```
-
-### Local Development
-
-For local development, set environment variables:
+Credentials are passed as a base64-encoded JSON object in the `config` URL parameter:
 
 ```bash
-export XBRL_USERNAME="your-username"
-export XBRL_PASSWORD="your-password"
-export XBRL_CLIENT_ID="your-client-id"
-export XBRL_CLIENT_SECRET="your-client-secret"
+# Example configuration object (before base64 encoding):
+{
+  "username": "your-xbrl-username",
+  "password": "your-xbrl-password",
+  "client_id": "your-client-id",
+  "client_secret": "your-client-secret"
+}
 ```
 
 ## Installation & Setup
@@ -103,146 +66,97 @@ cd xbrl-us-mcp
 uv sync
 ```
 
-3. Set environment variables (see Authentication section above)
-
-4. Run the server:
+3. Run the server:
 
 ```bash
-uv run python -m src.index
+uv run src/index.py
 ```
 
-The server will start on port 8000 by default.
+The server will start on port 8082 by default.
 
-### Docker Deployment
+## Usage Example
 
-1. Build the Docker image:
-
-```bash
-docker build -t xbrl-us-mcp .
-```
-
-2. Run the container:
-
-```bash
-docker run -p 8000:8000 \
-  -e XBRL_USERNAME="your-username" \
-  -e XBRL_PASSWORD="your-password" \
-  -e XBRL_CLIENT_ID="your-client-id" \
-  -e XBRL_CLIENT_SECRET="your-client-secret" \
-  xbrl-us-mcp
-```
-
-### Smithery Deployment
-
-1. Ensure you have the Smithery CLI installed:
-
-```bash
-npm install -g @smithery/cli
-```
-
-2. Deploy to Smithery:
-
-```bash
-smithery deploy
-```
-
-The server will be available through Smithery's platform with the secure configuration interface.
-
-## Usage Examples
-
-### Search for Apple Inc.
+### Search for Companies in 2023
 
 ```
 Tool: search_companies
-Parameters: {"query": "Apple", "limit": 5}
+Parameters: {"year": 2023, "limit": 10}
 ```
 
-### Get Apple's Financial Facts for 2023
+This will return financial facts for companies with data available for fiscal year 2023.
 
-```
-Tool: get_company_facts
-Parameters: {"cik": "0000320193", "year": 2023, "limit": 20}
-```
+## Architecture
 
-### Search for Revenue-related Concepts
+### Session Management
 
-```
-Tool: search_concepts
-Parameters: {"query": "Revenue", "limit": 10}
-```
+The server implements sophisticated session management:
 
-### Get Apple's Recent 10-K Filings
+- **FastMCP Session IDs**: Uses FastMCP's built-in session identification
+- **Session-Scoped Storage**: XBRL instances persist across requests within the same session
+- **Automatic Token Reuse**: Reuses valid XBRL authentication tokens to improve performance
+- **Credential Validation**: SHA256 hashing ensures secure credential comparison
+- **Token Expiration**: Automatically handles expired tokens and re-authenticates when needed
 
-```
-Tool: get_company_filings
-Parameters: {"cik": "0000320193", "form_type": "10-K", "limit": 5}
-```
-
-## Project Structure
+### Project Structure
 
 ```
 xbrl-us-mcp/
 ├── src/
 │   ├── index.py              # Main FastMCP server
-│   ├── utils/
-│   │   ├── __init__.py
-│   │   └── xbrl_client.py    # XBRL-US API client
 │   └── funcs/
 │       ├── __init__.py
-│       └── utils.py          # Utility functions
-├── smithery.yaml             # Smithery deployment config
-├── Dockerfile               # Container configuration
+│       └── middleware.py     # Session authentication middleware
+├── smithery.yaml             # Deployment configuration
 ├── pyproject.toml           # Python dependencies
 └── README.md               # This file
 ```
 
-## Security Features
+## Session Persistence Benefits
 
-- **Credential Protection**: All credentials are handled securely through Smithery's configuration system
-- **Input Validation**: All inputs are validated before processing
-- **Error Handling**: Comprehensive error handling with informative messages
-- **Logging**: Structured logging for monitoring and debugging
+- **Performance**: Eliminates redundant authentication calls
+- **Efficiency**: Reuses XBRL instances across multiple tool calls
+- **Reliability**: Handles token expiration gracefully
+- **Security**: Secure credential hashing and validation
 
-## API Rate Limits
+## Expected Behavior
 
-This server respects XBRL-US API rate limits. The XBRL-US API has usage limits based on your subscription plan. Please refer to your XBRL-US account for specific rate limit information.
+**First Request in Session:**
+
+```
+New XBRL instance created for session abc123...: token...
+```
+
+**Subsequent Requests in Same Session:**
+
+```
+Reusing valid XBRL session for abc123...
+Reusing XBRL instance: token...
+```
 
 ## Error Handling
 
-The server provides detailed error messages for common issues:
+The server provides detailed error messages for:
 
+- Missing or invalid credentials
 - Authentication failures
-- Invalid CIK formats
-- API rate limit exceeded
+- Token expiration
 - Network connectivity issues
 - Invalid search parameters
+
+## Security Features
+
+- **Credential Hashing**: SHA256 hashing of credentials for secure comparison
+- **Session Isolation**: Each session maintains independent authentication state
+- **Token Validation**: Automatic validation of XBRL token expiration
+- **Secure Storage**: Credentials are never stored in plain text
 
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+4. Submit a pull request
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Support
-
-For issues related to:
-
-- **XBRL-US API**: Contact XBRL-US support
-- **Smithery Platform**: Contact Smithery support
-- **This MCP Server**: Create an issue in this repository
-
-## Changelog
-
-### v0.1.0
-
-- Initial release
-- Basic XBRL-US API integration
-- Smithery deployment support
-- Company search, financial facts, concepts, and filings tools
-- Secure authentication handling
+This project is licensed under the MIT License.
