@@ -8,7 +8,7 @@ dependencies = [
     "fastmcp>=2.8.1",
     "httpx>=0.28.1",
     "mcp[cli]>=1.9.4",
-    "smithery>=0.1.3",
+    "smithery>=0.4.2",
     "xbrl-us>=1.0.1",
 ]
 
@@ -17,3 +17,16 @@ dev = [
     "jupyter>=1.1.1",
     "wrds>=3.3.0",
 ]
+
+
+[project.scripts]
+dev = "smithery.cli.dev:main" # Run the MCP server in development mode
+start = "smithery.cli.start:main" # Run the MCP server in production mode
+playground = "smithery.cli.playground:main" # Run server with interactive testing playground
+
+[tool.uv]
+package = true
+
+[tool.smithery]
+server = "index:create_server" # Function that returns a patched FastMCP server
+log_level = "warning" # Production log level (optional, defaults to "warning")

@@ -1,9 +1,6 @@
 """Session-based authentication middleware for XBRL-US MCP server."""
 
-import json
-import base64
 import hashlib
-from urllib.parse import unquote
 from xbrl_us import XBRL
 from fastmcp.server.middleware import Middleware, MiddlewareContext
 from pydantic import BaseModel, Field
@@ -134,31 +131,20 @@ class SessionAuthMiddleware(Middleware):
             if not request:
                 return None
 
-            # Try query parameters first
-            if hasattr(request, "query_params"):
-                config = request.query_params.get("config")
-                if config:
-                    try:
-                        config_b64 = unquote(config)
-                        config = json.loads(base64.b64decode(config_b64))
-                        auth_config = ConfigSchema.model_validate(config)
-                        return auth_config
-
-                    except Exception as e:
-                        print(f"Failed to parse config: {e}")
-
             # Try to extract from URL if available
             if hasattr(request, "url"):
                 import urllib.parse
 
                 parsed = urllib.parse.urlparse(str(request.url))
                 params = urllib.parse.parse_qs(parsed.query)
-                config = params.get("config", [None])[0]
-                if config:
+                if params:
                     try:
-                        config_b64 = unquote(config)
-                        config = json.loads(base64.b64decode(config_b64))
-                        auth_config = ConfigSchema.model_validate(config)
+                        auth_config = dict(
+                            username=params.get("username", [None])[0],
+                            password=params.get("password", [None])[0],
+                            client_id=params.get("client_id", [None])[0],
+                            client_secret=params.get("client_secret", [None])[0],
+                        )
                         return auth_config
 
                     except Exception as e:
