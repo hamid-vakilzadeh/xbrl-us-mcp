@@ -69,10 +69,10 @@ uv sync
 3. Run the server:
 
 ```bash
-uv run src/index.py
+uv run playground
 ```
 
-The server will start on port 8082 by default.
+The server will start on port 8081 by default and open smithery.ai playground
 
 ## Usage Example
 
