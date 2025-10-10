@@ -76,7 +76,7 @@ class SessionAuthMiddleware(Middleware):
                     and self._is_xbrl_valid(stored_xbrl)
                 ):
                     xbrl_instance = stored_xbrl
-                    logger.info(f"Reusing valid XBRL session for {session_id}")
+                    logger.debug(f"Reusing valid XBRL session for {session_id}")
 
                 else:
                     logger.info(
@@ -91,14 +91,14 @@ class SessionAuthMiddleware(Middleware):
                     "credentials_hash": credentials_hash,
                     "created_at": time.time(),
                 }
-                logger.info(
+                logger.debug(
                     f"New XBRL instance created for session {session_id}: {xbrl_instance.access_token[:5]}..."
                 )
 
             # Store XBRL instance in context state for tools to access
             if context.fastmcp_context:
                 context.fastmcp_context.set_state("xbrl", xbrl_instance)
-                logger.info(
+                logger.debug(
                     f"XBRL instance stored in context: {xbrl_instance.access_token[:5]}..."
                 )
 
