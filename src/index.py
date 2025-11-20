@@ -4,8 +4,7 @@ A FastMCP server that provides access to XBRL-US financial data with authenticat
 """
 
 import logging
-from fastmcp import FastMCP
-from fastmcp.server.context import Context
+from fastmcp import FastMCP, Context
 from xbrl_us import XBRL
 from smithery.decorators import smithery
 from pandas import DataFrame
@@ -33,9 +32,10 @@ def create_server():
             "openWorldHint": True,
             "idempotentHint": True,
         },
-        exclude_args=["ctx"],
+        # exclude_args=["ctx"],
     )
     async def query(
+        ctx: Context,
         endpoint: Annotated[
             str,
             Field(
@@ -83,7 +83,6 @@ def create_server():
                 default=100,
             ),
         ] = 100,
-        ctx: Context = None,
     ) -> DataFrame:
         """Query XBRL-US API endpoints for financial data and facts
 
@@ -129,7 +128,7 @@ def create_server():
             "openWorldHint": True,
             "idempotentHint": True,
         },
-        exclude_args=["ctx"],
+        # exclude_args=["ctx"],
     )
     async def list_xbrl_endpoints(
         endpoint: Annotated[
@@ -158,7 +157,7 @@ def create_server():
                 examples=["meta", "meta/concept", "meta/entity"],
             ),
         ],
-        ctx: Context = None,
+        ctx: Context,
     ) -> dict:
         """List available XBRL API endpoints
 
