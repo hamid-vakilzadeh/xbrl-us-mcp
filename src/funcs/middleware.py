@@ -46,45 +46,39 @@ class SessionAuthMiddleware(Middleware):
             call_next: Function to continue the middleware chain
         """
         try:
-            # Extract session ID and credentials
+            # Extract session ID
             session_id = self._get_session_id(context)
-            config = await self._extract_credentials_from_request()
 
-            if not config:
-                logger.warning("No credentials provided in request")
-                # Store None in context to indicate no authentication
-                if context.fastmcp_context:
-                    context.fastmcp_context.set_state("xbrl", None)
-                return await call_next(context)
-
-            # Validate config schema
-            config = ConfigSchema.model_validate(config)
-            credentials_hash = self._hash_credentials(config)
-
-            # Check if we have a valid session
+            # First, check if we have a valid cached session
             session_data = _session_data.get(session_id)
             xbrl_instance = None
 
             if session_data:
-                stored_xbrl = session_data.get("xbrl_instance")
-                stored_hash = session_data.get("credentials_hash")
+                stored_xbrl = session_data.get("xbrl_instance", None)
 
-                # Check if credentials match and XBRL instance is still valid
-                if (
-                    stored_hash == credentials_hash
-                    and stored_xbrl
-                    and self._is_xbrl_valid(stored_xbrl)
-                ):
+                # Check if XBRL instance is still valid
+                if stored_xbrl and self._is_xbrl_valid(stored_xbrl):
                     xbrl_instance = stored_xbrl
                     logger.debug(f"Reusing valid XBRL session for {session_id}")
 
-                else:
-                    logger.info(
-                        f"Session {session_id} invalid or expired, creating new one"
-                    )
-
-            # Create new XBRL instance if needed
+            # If no valid cached session, try to authenticate with credentials
             if not xbrl_instance:
+                config = await self._extract_credentials_from_request()
+
+                if not config:
+                    logger.warning(
+                        "No credentials provided and no valid cached session"
+                    )
+                    # Store None in context to indicate no authentication
+                    if context.fastmcp_context:
+                        context.fastmcp_context.set_state("xbrl", None)
+                    return await call_next(context)
+
+                # Validate config schema
+                config = ConfigSchema.model_validate(config)
+                credentials_hash = self._hash_credentials(config)
+
+                # Create new XBRL instance
                 xbrl_instance = await self._authenticate_user(config)
                 _session_data[session_id] = {
                     "xbrl_instance": xbrl_instance,
