@@ -4,11 +4,12 @@ A FastMCP server that provides access to XBRL-US financial data with authenticat
 """
 
 import logging
+import json
 from fastmcp import FastMCP, Context
 from xbrl_us import XBRL
 from smithery.decorators import smithery
 from pandas import DataFrame
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Any
 from pydantic import Field
 import requests
 from funcs.middleware import SessionAuthMiddleware, ConfigSchema
@@ -17,6 +18,54 @@ from funcs.middleware import SessionAuthMiddleware, ConfigSchema
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+def validate_and_convert_parameters(
+    parameters: dict[str, Any] | str | None,
+) -> dict[str, Any] | None:
+    """
+    Validate and convert parameters to the correct format.
+
+    This function handles cases where the LLM passes parameters as a JSON string
+    instead of a dict object, which can happen due to serialization.
+
+    Args:
+        parameters: Either a dict, JSON string, or None
+
+    Returns:
+        A validated dict or None
+
+    Raises:
+        ValueError: If parameters cannot be parsed or are in invalid format
+    """
+    if parameters is None:
+        return None
+
+    # If it's already a dict, return it
+    if isinstance(parameters, dict):
+        return parameters
+
+    # If it's a string, try to parse it as JSON
+    if isinstance(parameters, str):
+        try:
+            parsed = json.loads(parameters)
+            if not isinstance(parsed, dict):
+                raise ValueError(
+                    f"Parameters must be a dictionary/object, not {type(parsed).__name__}. "
+                    f"Example: {{'entity.ticker': 'AAPL', 'period.fiscal-year': 2023}}"
+                )
+            return parsed
+        except json.JSONDecodeError as e:
+            raise ValueError(
+                f"Invalid JSON in parameters string: {e}. "
+                f"Parameters must be a valid JSON object like {{'entity.ticker': 'AAPL', 'period.fiscal-year': 2023}}"
+            ) from e
+
+    # Invalid type
+    raise ValueError(
+        f"Parameters must be a dict/object or JSON string, got {type(parameters).__name__}. "
+        f"Example: {{'entity.ticker': 'AAPL', 'period.fiscal-year': 2023}}"
+    )
 
 
 @smithery.server(config_schema=ConfigSchema)
@@ -52,11 +101,14 @@ def create_server():
             ),
         ],
         parameters: Annotated[
-            dict[str, str | int | float | bool | list] | None,
+            dict[str, str | int | float | bool | list] | str | None,
             Field(
-                description="Optional dictionary of query parameters to filter results (e.g., {'entity.ticker': 'AAPL', 'period.fiscal-year': 2023})",
+                description="Query parameters to filter results. Must be a JSON object/dict with key-value pairs. Example: {'entity.ticker': 'AAPL', 'period.fiscal-year': 2023}",
                 default=None,
-                examples=[{"entity.ticker": "AAPL", "period.fiscal-year": 2023}],
+                examples=[
+                    {"entity.ticker": "AAPL", "period.fiscal-year": 2023},
+                    {"entity.ticker": "MSFT", "report.document-type": "10-K"},
+                ],
             ),
         ] = None,
         sort: Annotated[
@@ -109,11 +161,22 @@ def create_server():
         if not fields:
             raise ValueError("fields are required")
 
+        # Validate and convert parameters if provided
+        try:
+            validated_parameters = validate_and_convert_parameters(parameters)
+        except ValueError as e:
+            raise ValueError(
+                f"Parameter validation failed: {e}\n\n"
+                f"IMPORTANT: Parameters must be provided as a JSON object/dict, not a string.\n"
+                f"Correct format: {{'entity.ticker': 'AAPL', 'period.fiscal-year': 2023}}\n"
+                f"NOT as a string: '{{'entity.ticker': 'AAPL'}}'"
+            ) from e
+
         try:
             return xbrl.query(
                 endpoint=endpoint,
                 fields=fields,
-                parameters=parameters,
+                parameters=validated_parameters,
                 limit=limit,
                 unique=unique,
                 sort=sort,
