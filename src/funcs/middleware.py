@@ -31,7 +31,7 @@ class SessionAuthMiddleware(Middleware):
     3. Stores credentials in context state for tools to access
     """
 
-    async def on_request(self, context: MiddlewareContext, call_next):
+    async def on_message(self, context: MiddlewareContext, call_next):
         """
         Handle session-based XBRL authentication for MCP requests.
 

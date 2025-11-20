@@ -112,7 +112,7 @@ def create_server():
             ),
         ] = None,
         sort: Annotated[
-            dict[str, Literal["desc", "asc"]] | None,
+            dict[str, Literal["desc", "asc"]] | str | None,
             Field(
                 description="Optional dictionary specifying sort order for fields. Keys are field names, values are 'desc' or 'asc'",
                 default=None,
@@ -173,13 +173,23 @@ def create_server():
             ) from e
 
         try:
+            validated_sort = validate_and_convert_parameters(sort)
+        except ValueError as e:
+            raise ValueError(
+                f"Sort validation failed: {e}\n\n"
+                f"IMPORTANT: Sort must be provided as a JSON object/dict, not a string.\n"
+                f"Correct format: {{'entity.ticker': 'DESC', 'period.fiscal-year': 'ASC'}}\n"
+                f"NOT as a string: '{{'entity.ticker': 'AAPL'}}'"
+            ) from e
+
+        try:
             return xbrl.query(
                 endpoint=endpoint,
                 fields=fields,
                 parameters=validated_parameters,
                 limit=limit,
                 unique=unique,
-                sort=sort,
+                sort=validated_sort,
             )
         except Exception as e:
             raise ValueError(f"Failed to fetch XBRL data: {e}")
