@@ -1,5 +1,7 @@
 # XBRL-US MCP Server
 
+[![smithery badge](https://smithery.ai/badge/@hamid-vakilzadeh/xbrl-us-mcp)](https://smithery.ai/server/@hamid-vakilzadeh/xbrl-us-mcp)
+
 A Model Context Protocol (MCP) server that provides secure access to XBRL-US financial data with session-based authentication and state persistence.
 
 ## Features
