@@ -76,14 +76,10 @@ def validate_and_convert_parameters(
     )
 
 
-# @smithery.server(config_schema=ConfigSchema)
-# def create_server():
 # Initialize the FastMCP server with configuration schema support
 mcp = FastMCP(
     name="XBRL-US Data Server",
     middleware=[SessionAuthMiddleware()],
-    # log_level="info",
-    # debug=True
 )
 
 
@@ -320,7 +316,7 @@ async def list_xbrl_endpoints(
 if __name__ == "__main__":
     # Run the server
     mcp.run(
-        transport="http",
+        transport="streamable-http",
         host="0.0.0.0",
         port=8081,
         path="/mcp",
