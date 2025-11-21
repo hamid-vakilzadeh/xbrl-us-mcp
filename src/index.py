@@ -15,6 +15,12 @@ import requests
 from funcs.middleware import SessionAuthMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+)
 
 
 # Configure logging
@@ -99,19 +105,17 @@ async def well_known_config(request: Request) -> JSONResponse:
                 "Access-Control-Allow-Origin": "*",
                 "Access-Control-Allow-Methods": "GET, OPTIONS",
                 "Access-Control-Allow-Headers": "Content-Type",
-            }
+            },
         )
     except FileNotFoundError:
         logger.error(f"Configuration schema file not found at {config_path}")
         return JSONResponse(
-            content={"error": "Configuration schema not found"},
-            status_code=404
+            content={"error": "Configuration schema not found"}, status_code=404
         )
     except json.JSONDecodeError as e:
         logger.error(f"Invalid JSON in configuration schema: {e}")
         return JSONResponse(
-            content={"error": "Invalid configuration schema"},
-            status_code=500
+            content={"error": "Invalid configuration schema"}, status_code=500
         )
 
 
@@ -223,7 +227,15 @@ async def query(
             f"NOT as a string: '{{'entity.ticker': 'AAPL'}}'"
         ) from e
 
-    try:
+    # Create a retry decorator for the query with exponential backoff
+    @retry(
+        stop=stop_after_attempt(5),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type((Exception,)),
+        reraise=True,
+    )
+    def query_with_retry():
+        """Execute XBRL query with retry logic"""
         return xbrl.query(
             endpoint=endpoint,
             fields=fields,
@@ -231,9 +243,13 @@ async def query(
             limit=limit,
             unique=unique,
             sort=validated_sort,
+            timeout=120,
         )
+
+    try:
+        return query_with_retry()
     except Exception as e:
-        raise ValueError(f"Failed to fetch XBRL data: {e}")
+        raise ValueError(f"Failed to fetch XBRL data after 5 retries: {e}")
 
 
 @mcp.tool(

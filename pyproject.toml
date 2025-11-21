@@ -9,6 +9,7 @@ dependencies = [
     "httpx>=0.28.1",
     "mcp[cli]>=1.9.4",
     "smithery>=0.4.2",
+    "tenacity>=9.0.0",
     "xbrl-us>=1.0.1",
 ]
 

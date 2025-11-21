@@ -2703,6 +2703,7 @@ dependencies = [
     { name = "httpx" },
     { name = "mcp", extra = ["cli"] },
     { name = "smithery" },
+    { name = "tenacity" },
     { name = "xbrl-us" },
 ]
 
@@ -2717,6 +2718,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "mcp", extras = ["cli"], specifier = ">=1.9.4" },
     { name = "smithery", specifier = ">=0.4.2" },
+    { name = "tenacity", specifier = ">=9.0.0" },
     { name = "xbrl-us", specifier = ">=1.0.1" },
 ]
 
