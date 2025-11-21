@@ -5,6 +5,7 @@ A FastMCP server that provides access to XBRL-US financial data with authenticat
 
 import logging
 import json
+from pathlib import Path
 from fastmcp import FastMCP, Context
 from xbrl_us import XBRL
 from pandas import DataFrame
@@ -12,6 +13,8 @@ from typing import Annotated, Literal, Any
 from pydantic import Field
 import requests
 from funcs.middleware import SessionAuthMiddleware
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 
 # Configure logging
@@ -76,6 +79,40 @@ mcp = FastMCP(
     # log_level="info",
     # debug=True
 )
+
+
+@mcp.custom_route("/.well-known/mcp-config", methods=["GET"])
+async def well_known_config(request: Request) -> JSONResponse:
+    """
+    Serve the MCP configuration schema at the well-known endpoint.
+    This allows clients to discover the configuration options for this server.
+    """
+    # Read the config schema from the .well-known directory
+    config_path = Path(__file__).parent.parent / ".well-known" / "mcp-config"
+
+    try:
+        with open(config_path, "r") as f:
+            config_schema = json.load(f)
+        return JSONResponse(
+            content=config_schema,
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type",
+            }
+        )
+    except FileNotFoundError:
+        logger.error(f"Configuration schema file not found at {config_path}")
+        return JSONResponse(
+            content={"error": "Configuration schema not found"},
+            status_code=404
+        )
+    except json.JSONDecodeError as e:
+        logger.error(f"Invalid JSON in configuration schema: {e}")
+        return JSONResponse(
+            content={"error": "Invalid configuration schema"},
+            status_code=500
+        )
 
 
 @mcp.tool(
