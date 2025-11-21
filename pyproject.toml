@@ -18,14 +18,5 @@ dev = [
 ]
 
 
-[project.scripts]
-dev = "smithery.cli.dev:main" # Run the MCP server in development mode
-start = "smithery.cli.start:main" # Run the MCP server in production mode
-playground = "smithery.cli.playground:main" # Run server with interactive testing playground
-
 [tool.uv]
 package = true
-
-[tool.smithery]
-server = "index:create_server" # Function that returns a patched FastMCP server
-log_level = "warning" # Production log level (optional, defaults to "warning")
