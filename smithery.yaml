@@ -1,1 +1,33 @@
-runtime: "python"
+runtime: "container"
+build:
+  dockerfile: "Dockerfile"
+  dockerBuildPath: "."
+startCommand:
+  type: "http"
+  configSchema:
+    type: "object"
+    required: ["username", "password", "client_id", "client_secret"]
+    properties:
+      username:
+        type: "string"
+        title: "XBRL-US Username"
+        description: "Your XBRL-US account username"
+      password:
+        type: "string"
+        title: "XBRL-US Password"
+        description: "Your XBRL-US account password"
+        format: "password"
+      client_id:
+        type: "string"
+        title: "Client ID"
+        description: "Your XBRL-US API client ID"
+      client_secret:
+        type: "string"
+        title: "Client Secret"
+        description: "Your XBRL-US API client secret"
+        format: "password"
+  exampleConfig:
+    username: "your-username"
+    password: "your-password"
+    client_id: "your-client-id"
+    client_secret: "your-client-secret"

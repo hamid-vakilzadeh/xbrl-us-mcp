@@ -50,7 +50,7 @@ class SessionAuthMiddleware(Middleware):
             session_id = self._get_session_id(context)
 
             # First, check if we have a valid cached session
-            session_data = _session_data.get(session_id)
+            session_data = _session_data.get(session_id, None)
             xbrl_instance = None
 
             if session_data:
@@ -90,11 +90,10 @@ class SessionAuthMiddleware(Middleware):
                 )
 
             # Store XBRL instance in context state for tools to access
-            if context.fastmcp_context:
-                context.fastmcp_context.set_state("xbrl", xbrl_instance)
-                logger.debug(
-                    f"XBRL instance stored in context: {xbrl_instance.access_token[:5]}..."
-                )
+            context.fastmcp_context.set_state("xbrl", xbrl_instance)
+            logger.debug(
+                f"XBRL instance stored in context: {xbrl_instance.access_token[:5]}..."
+            )
 
             # Continue with the request
             return await call_next(context)
